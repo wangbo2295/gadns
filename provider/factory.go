@@ -29,12 +29,16 @@ func New(providerType, configPath string) (core.SmartDNS, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tencent config: %w", err)
 		}
-		return tencent.NewProvider(&tencent.Config{
+		provider, err := tencent.NewProvider(&tencent.Config{
 			SecretID:  cfg.SecretID,
 			SecretKey: cfg.SecretKey,
 			Region:    cfg.Region,
 			Domain:    cfg.Domain,
-		}), nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create tencent provider: %w", err)
+		}
+		return provider, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", providerType)

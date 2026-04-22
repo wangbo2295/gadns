@@ -7,6 +7,7 @@ SmartDNS 是一个 Go 语言的 DNS 管理组件库和命令行工具，根据 I
 - 支持多种IP格式：单IP、IP范围、CIDR段
 - 接口与实现解耦，易于扩展
 - 内置腾讯云智能DNS和本地调试两种实现
+- **腾讯云智能调度**：支持按地域、运营商智能返回不同IP
 - 提供完整的命令行工具
 - 严格格式校验
 - 完整的测试覆盖
@@ -203,6 +204,89 @@ smartdns/
 ├── Makefile             # 构建脚本
 └── README.md
 ```
+
+## 腾讯云智能DNS
+
+腾讯云模式支持**智能调度**功能，可以为不同的用户群体返回不同的IP地址。
+
+### 智能调度特性
+
+- **地域调度**：支持按省份/地区返回不同IP（如：北京用户返回IP1，上海用户返回IP2）
+- **运营商调度**：支持按运营商返回不同IP（如：电信用户返回IP1，联通用户返回IP2）
+- **默认线路**：为未匹配地域或运营商的用户提供默认IP
+
+### 智能调度配置
+
+当前内置默认配置：
+
+```go
+DefaultSmartRoutingConfig = SmartRoutingConfig{
+    Enabled: true,
+    Regions: []string{
+        "北京", "上海", "广东", "江苏", "浙江", "四川", "湖北", "福建",
+    },
+    Carriers: []string{
+        "电信", "联通", "移动",
+    },
+}
+```
+
+### 工作原理
+
+当启用智能调度时，系统会为每个IP创建多条DNS记录：
+
+1. **默认线路记录**：第一条IP作为默认返回值
+2. **地域线路记录**：为配置的每个地区创建一条记录
+3. **运营商线路记录**：为每个运营商创建一条记录
+
+例如，使用单个IP `1.1.1.1` 创建记录 `app`：
+- 创建 `app.example.com` → `1.1.1.1`（默认线路）
+- 创建 `app.example.com` → `1.1.1.1`（北京线路）
+- 创建 `app.example.com` → `1.1.1.1`（上海线路）
+- ...
+- 创建 `app.example.com` → `1.1.1.1`（电信线路）
+- 创建 `app.example.com` → `1.1.1.1`（联通线路）
+- ...
+
+### 使用示例
+
+```bash
+# 创建智能调度记录（自动为每个IP创建多条线路记录）
+smartdns -c ~/.smartdns/tencent.yaml add -ips 1.1.1.1 app
+
+# 使用多个IP（每个IP都会创建地域和运营商线路记录）
+smartdns -c ~/.smartdns/tencent.yaml add -ips 1.1.1.1,2.2.2.2 api
+
+# 更新记录（删除所有旧记录，重新创建）
+smartdns -c ~/.smartdns/tencent.yaml update -ips 3.3.3.3 app
+
+# 查询记录（聚合显示所有IP）
+smartdns -c ~/.smartdns/tencent.yaml get app
+
+# 列出所有记录
+smartdns -c ~/.smartdns/tencent.yaml list
+
+# 删除记录（删除所有相关线路记录）
+smartdns -c ~/.smartdns/tencent.yaml delete app
+```
+
+### 腾讯云配置示例
+
+创建 `~/.smartdns/tencent.yaml`:
+
+```yaml
+secret_id: "AKIDxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+secret_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+region: "ap-guangzhou"  # 可选，默认为 ap-guangzhou
+domain: "example.com"    # 你的域名
+```
+
+### 注意事项
+
+1. **API密钥安全**：请妥善保管腾讯云API密钥，建议使用子账号并限制权限
+2. **记录数量**：智能调度会创建多条记录，注意DNSPod套餐的记录数量限制
+3. **生效时间**：DNS记录修改后通常需要几分钟生效
+4. **TTL设置**：默认TTL为600秒（10分钟）
 
 ## 测试
 
