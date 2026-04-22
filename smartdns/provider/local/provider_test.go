@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/yourusername/smartdns/smartdns"
 	"github.com/yourusername/smartdns/smartdns/provider/local"
+	"github.com/yourusername/smartdns/types"
 )
 
 func TestLocalProviderCreate(t *testing.T) {
@@ -158,5 +158,5 @@ func TestLocalProviderCreateDuplicate(t *testing.T) {
 
 // TestLocalProviderImplementsInterface 验证 Provider 实现了 SmartDNS 接口
 func TestLocalProviderImplementsInterface(t *testing.T) {
-	var _ smartdns.SmartDNS = (*local.Provider)(nil)
+	var _ types.SmartDNS = (*local.Provider)(nil)
 }

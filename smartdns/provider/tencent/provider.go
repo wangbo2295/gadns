@@ -4,8 +4,8 @@ package tencent
 import (
 	"fmt"
 
-	"github.com/yourusername/smartdns/smartdns"
 	"github.com/yourusername/smartdns/smartdns/iputil"
+	"github.com/yourusername/smartdns/types"
 )
 
 // Provider 腾讯云DNS Provider
@@ -28,7 +28,7 @@ func (p *Provider) GenerateCNAME(name string) string {
 }
 
 // Create 创建DNS记录
-func (p *Provider) Create(name string, ips []string) (*smartdns.Record, error) {
+func (p *Provider) Create(name string, ips []string) (*types.Record, error) {
 	// 验证IP格式
 	for _, ip := range ips {
 		if err := iputil.ValidateIPInput(ip); err != nil {
@@ -46,7 +46,7 @@ func (p *Provider) Create(name string, ips []string) (*smartdns.Record, error) {
 	}
 	_ = recordID // TODO: 存储recordID以便后续Update/Delete操作
 
-	return &smartdns.Record{
+	return &types.Record{
 		Name:  name,
 		CNAME: cname,
 		IPs:   ips,
@@ -54,7 +54,7 @@ func (p *Provider) Create(name string, ips []string) (*smartdns.Record, error) {
 }
 
 // Update 更新DNS记录
-func (p *Provider) Update(name string, ips []string) (*smartdns.Record, error) {
+func (p *Provider) Update(name string, ips []string) (*types.Record, error) {
 	// 验证IP格式
 	for _, ip := range ips {
 		if err := iputil.ValidateIPInput(ip); err != nil {
@@ -76,7 +76,7 @@ func (p *Provider) Update(name string, ips []string) (*smartdns.Record, error) {
 	// }
 	_ = cname // TODO: 实现API调用
 
-	return &smartdns.Record{
+	return &types.Record{
 		Name:  name,
 		CNAME: cname,
 		IPs:   ips,
@@ -84,12 +84,12 @@ func (p *Provider) Update(name string, ips []string) (*smartdns.Record, error) {
 }
 
 // Get 获取DNS记录
-func (p *Provider) Get(name string) (*smartdns.Record, error) {
+func (p *Provider) Get(name string) (*types.Record, error) {
 	return nil, fmt.Errorf("not implemented: requires Tencent Cloud API credentials")
 }
 
 // List 列出所有DNS记录
-func (p *Provider) List() ([]*smartdns.Record, error) {
+func (p *Provider) List() ([]*types.Record, error) {
 	return nil, fmt.Errorf("not implemented: requires Tencent Cloud API credentials")
 }
 

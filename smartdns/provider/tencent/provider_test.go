@@ -4,8 +4,8 @@ package tencent_test
 import (
 	"testing"
 
-	"github.com/yourusername/smartdns/smartdns"
 	"github.com/yourusername/smartdns/smartdns/provider/tencent"
+	"github.com/yourusername/smartdns/types"
 )
 
 func TestTencentProviderImplementsInterface(t *testing.T) {
@@ -17,7 +17,7 @@ func TestTencentProviderImplementsInterface(t *testing.T) {
 	})
 
 	// 验证接口实现
-	var _ smartdns.SmartDNS = provider
+	var _ types.SmartDNS = provider
 }
 
 func TestTencentProviderGenerateCNAME(t *testing.T) {
