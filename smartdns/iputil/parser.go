@@ -156,21 +156,26 @@ func parseRange(input string) ([]string, error) {
 // inc increments an IP address by 1
 // Returns a new IP with the incremented value
 func inc(ip net.IP) net.IP {
+	// Convert IPv4 to 4-byte format for consistent handling
+	if ip.To4() != nil {
+		ip = ip.To4()
+	}
+
 	// Make a copy to avoid modifying the original
-	ip = make(net.IP, len(ip))
-	copy(ip, ip)
+	nextIP := make(net.IP, len(ip))
+	copy(nextIP, ip)
 
 	// Increment from right to left (network byte order)
-	for i := len(ip) - 1; i >= 0; i-- {
-		ip[i]++
-		if ip[i] != 0 {
+	for i := len(nextIP) - 1; i >= 0; i-- {
+		nextIP[i]++
+		if nextIP[i] != 0 {
 			// No overflow, we're done
 			break
 		}
 		// Overflow, continue to next byte
 	}
 
-	return ip
+	return nextIP
 }
 
 // ipCompare compares two IP addresses byte by byte
