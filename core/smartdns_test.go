@@ -1,4 +1,4 @@
-package smartdns
+package core
 
 import (
 	"testing"

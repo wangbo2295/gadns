@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/smartdns/smartdns/iputil"
-	"github.com/yourusername/smartdns/types"
+	"github.com/yourusername/smartdns/core"
+	"github.com/yourusername/smartdns/iputil"
 )
 
 // Provider 本地DNS Provider
@@ -26,7 +26,7 @@ func NewProvider(cfg *Config) *Provider {
 }
 
 // Create 创建DNS记录
-func (p *Provider) Create(name string, ips []string) (*types.Record, error) {
+func (p *Provider) Create(name string, ips []string) (*core.Record, error) {
 	// 检查记录是否已存在
 	_, err := p.storage.Get(name)
 	if err == nil {
@@ -62,7 +62,7 @@ func (p *Provider) Create(name string, ips []string) (*types.Record, error) {
 		return nil, fmt.Errorf("failed to update hosts file: %w", err)
 	}
 
-	return &types.Record{
+	return &core.Record{
 		Name:  name,
 		CNAME: cname,
 		IPs:   ips,
@@ -70,7 +70,7 @@ func (p *Provider) Create(name string, ips []string) (*types.Record, error) {
 }
 
 // Update 更新DNS记录
-func (p *Provider) Update(name string, ips []string) (*types.Record, error) {
+func (p *Provider) Update(name string, ips []string) (*core.Record, error) {
 	// 检查记录是否存在
 	_, err := p.storage.Get(name)
 	if err != nil {
@@ -106,7 +106,7 @@ func (p *Provider) Update(name string, ips []string) (*types.Record, error) {
 		return nil, fmt.Errorf("failed to update hosts file: %w", err)
 	}
 
-	return &types.Record{
+	return &core.Record{
 		Name:  name,
 		CNAME: cname,
 		IPs:   ips,
@@ -114,13 +114,13 @@ func (p *Provider) Update(name string, ips []string) (*types.Record, error) {
 }
 
 // Get 获取DNS记录
-func (p *Provider) Get(name string) (*types.Record, error) {
+func (p *Provider) Get(name string) (*core.Record, error) {
 	storedRecord, err := p.storage.Get(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.Record{
+	return &core.Record{
 		Name:  storedRecord.Name,
 		CNAME: storedRecord.CNAME,
 		IPs:   storedRecord.IPs,
@@ -128,15 +128,15 @@ func (p *Provider) Get(name string) (*types.Record, error) {
 }
 
 // List 列出所有DNS记录
-func (p *Provider) List() ([]*types.Record, error) {
+func (p *Provider) List() ([]*core.Record, error) {
 	storedRecords, err := p.storage.List()
 	if err != nil {
 		return nil, err
 	}
 
-	var records []*types.Record
+	var records []*core.Record
 	for _, sr := range storedRecords {
-		records = append(records, &types.Record{
+		records = append(records, &core.Record{
 			Name:  sr.Name,
 			CNAME: sr.CNAME,
 			IPs:   sr.IPs,

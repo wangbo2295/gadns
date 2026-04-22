@@ -1,16 +1,17 @@
 // factory.go
-package smartdns
+package provider
 
 import (
 	"fmt"
 
-	"github.com/yourusername/smartdns/smartdns/config"
-	"github.com/yourusername/smartdns/smartdns/provider/local"
-	"github.com/yourusername/smartdns/smartdns/provider/tencent"
+	"github.com/yourusername/smartdns/core"
+	"github.com/yourusername/smartdns/config"
+	"github.com/yourusername/smartdns/provider/local"
+	"github.com/yourusername/smartdns/provider/tencent"
 )
 
 // New 根据配置创建SmartDNS实例
-func New(providerType, configPath string) (SmartDNS, error) {
+func New(providerType, configPath string) (core.SmartDNS, error) {
 	switch providerType {
 	case "local":
 		cfg, err := config.Load[config.LocalConfig](configPath)

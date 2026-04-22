@@ -1,5 +1,5 @@
 // factory_test.go
-package smartdns
+package provider
 
 import (
 	"os"
