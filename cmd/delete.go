@@ -7,7 +7,7 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <name>",
+	Use:   "delete <domain>",
 	Short: "删除 DNS 记录",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -16,7 +16,7 @@ var deleteCmd = &cobra.Command{
 			return fmt.Errorf("failed to create provider: %w", err)
 		}
 
-		if err := cp.Delete(fullName(args[0])); err != nil {
+		if err := cp.Delete(args[0]); err != nil {
 			return err
 		}
 

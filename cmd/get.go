@@ -8,7 +8,7 @@ import (
 )
 
 var getCmd = &cobra.Command{
-	Use:   "get <name>",
+	Use:   "get <domain>",
 	Short: "查询 DNS 记录",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -17,7 +17,7 @@ var getCmd = &cobra.Command{
 			return fmt.Errorf("failed to create provider: %w", err)
 		}
 
-		record, err := cp.Get(fullName(args[0]))
+		record, err := cp.Get(args[0])
 		if err != nil {
 			return err
 		}

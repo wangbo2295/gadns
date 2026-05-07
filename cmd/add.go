@@ -10,7 +10,7 @@ import (
 var addIPs string
 
 var addCmd = &cobra.Command{
-	Use:   "add -i <ip_list> <name>",
+	Use:   "add -i <ip_list> <domain>",
 	Short: "新增 DNS 记录",
 	Long:  "为域名创建 A 记录，每个 IP 创建一条记录，多 IP 时自动分配权重。",
 	Args:  cobra.ExactArgs(1),
@@ -24,7 +24,7 @@ var addCmd = &cobra.Command{
 			return fmt.Errorf("failed to create provider: %w", err)
 		}
 
-		record, err := cp.Create(fullName(args[0]), strings.Split(addIPs, ","))
+		record, err := cp.Create(args[0], strings.Split(addIPs, ","))
 		if err != nil {
 			return err
 		}

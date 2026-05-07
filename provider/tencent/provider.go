@@ -29,11 +29,6 @@ func NewProvider(cfg *Config) (*Provider, error) {
 	}, nil
 }
 
-// GenerateCNAME 生成 CNAME（委托给 utils）
-func (p *Provider) GenerateCNAME(fullDomain string) string {
-	return utils.GenerateCNAME(fullDomain, p.config.Domain)
-}
-
 // Create 创建DNS记录（负载均衡模式：每个IP一条A记录）
 func (p *Provider) Create(fullDomain string, ips []string) (*core.Record, error) {
 	ctx := context.Background()
@@ -44,7 +39,7 @@ func (p *Provider) Create(fullDomain string, ips []string) (*core.Record, error)
 		}
 	}
 
-	cname := p.GenerateCNAME(fullDomain)
+	cname := utils.GenerateCNAME(fullDomain, p.config.Domain)
 	sub := strings.TrimSuffix(cname, "."+p.config.Domain) // A 记录的子域名与 CNAME 一致
 
 	if err := p.createRecords(ctx, sub, ips); err != nil {
@@ -106,7 +101,7 @@ func (p *Provider) createRecords(ctx context.Context, sub string, ips []string) 
 // Update 更新DNS记录
 func (p *Provider) Update(fullDomain string, ips []string) (*core.Record, error) {
 	ctx := context.Background()
-	cname := p.GenerateCNAME(fullDomain)
+	cname := utils.GenerateCNAME(fullDomain, p.config.Domain)
 	sub := strings.TrimSuffix(cname, "."+p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
@@ -132,7 +127,7 @@ func (p *Provider) Update(fullDomain string, ips []string) (*core.Record, error)
 // Get 获取DNS记录
 func (p *Provider) Get(fullDomain string) (*core.Record, error) {
 	ctx := context.Background()
-	cname := p.GenerateCNAME(fullDomain)
+	cname := utils.GenerateCNAME(fullDomain, p.config.Domain)
 	sub := strings.TrimSuffix(cname, "."+p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
@@ -208,7 +203,7 @@ func (p *Provider) List() ([]*core.Record, error) {
 // Delete 删除DNS记录
 func (p *Provider) Delete(fullDomain string) error {
 	ctx := context.Background()
-	cname := p.GenerateCNAME(fullDomain)
+	cname := utils.GenerateCNAME(fullDomain, p.config.Domain)
 	sub := strings.TrimSuffix(cname, "."+p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{

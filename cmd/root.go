@@ -3,10 +3,8 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wangbo2295/gadns/config"
 	"github.com/wangbo2295/gadns/core"
 	"github.com/wangbo2295/gadns/provider"
 )
@@ -52,18 +50,3 @@ func newProvider() (core.CNAMEProvider, error) {
 	return provider.New(providerType, getConfigPath())
 }
 
-func resolveDomain() string {
-	cfg, err := config.Load[config.TencentConfig](getConfigPath())
-	if err != nil {
-		return ""
-	}
-	return cfg.Domain
-}
-
-func fullName(name string) string {
-	domain := resolveDomain()
-	if domain == "" || strings.Contains(name, ".") {
-		return name
-	}
-	return name + "." + domain
-}

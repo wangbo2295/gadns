@@ -39,28 +39,28 @@ domain: "example.com"
 
 ```bash
 # 新增记录
-gadns add -i 1.1.1.1 app
+gadns add -i 1.1.1.1 app.doerhh.cn
 
 # 多个 IP（负载均衡，各 50% 权重）
-gadns add -i 1.1.1.1,2.2.2.2 web
+gadns add -i 1.1.1.1,2.2.2.2 web.doerhh.cn
 
 # 查询记录
-gadns get app
+gadns get app.doerhh.cn
 
 # 列出所有记录
 gadns list
 
 # 更新记录
-gadns update -i 5.5.5.5 app
+gadns update -i 5.5.5.5 app.doerhh.cn
 
 # 删除记录
-gadns delete app
+gadns delete app.doerhh.cn
 
 # 使用自定义配置
-gadns add -i 1.1.1.1 -c /path/to/config.yaml app
+gadns add -i 1.1.1.1 -c /path/to/config.yaml app.doerhh.cn
 
 # 使用 Noop Provider（内网测试，无需腾讯云）
-gadns -p noop -c noop.yaml add -i 1.1.1.1 app
+gadns -p noop -c noop.yaml add -i 1.1.1.1 app.example.com
 ```
 
 ## SDK 使用

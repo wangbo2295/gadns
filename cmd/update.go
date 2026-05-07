@@ -10,7 +10,7 @@ import (
 var updateIPs string
 
 var updateCmd = &cobra.Command{
-	Use:   "update -ips <ip_list> <name>",
+	Use:   "update -i <ip_list> <domain>",
 	Short: "更新 DNS 记录",
 	Long:  "更新域名对应的 IP 映射，先删除旧记录再重新创建",
 	Args:  cobra.ExactArgs(1),
@@ -24,7 +24,7 @@ var updateCmd = &cobra.Command{
 			return fmt.Errorf("failed to create provider: %w", err)
 		}
 
-		record, err := cp.Update(fullName(args[0]), strings.Split(updateIPs, ","))
+		record, err := cp.Update(args[0], strings.Split(updateIPs, ","))
 		if err != nil {
 			return err
 		}
