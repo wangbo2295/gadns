@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	cfgFile string
+	cfgFile      string
+	providerType string
 
 	// Version 信息（由 ldflags 设置）
 	Version   = "dev"
@@ -31,6 +32,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "配置文件路径 (默认 ~/.gadns/tencent.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&providerType, "provider", "p", "tencent", "Provider 类型 (tencent / noop)")
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 }
 
@@ -47,7 +49,7 @@ func getConfigPath() string {
 }
 
 func newProvider() (core.CNAMEProvider, error) {
-	return provider.New("tencent", getConfigPath())
+	return provider.New(providerType, getConfigPath())
 }
 
 func resolveDomain() string {

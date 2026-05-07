@@ -58,6 +58,9 @@ gadns delete app
 
 # 使用自定义配置
 gadns add -i 1.1.1.1 -c /path/to/config.yaml app
+
+# 使用 Noop Provider（内网测试，无需腾讯云）
+gadns -p noop -c noop.yaml add -i 1.1.1.1 app
 ```
 
 ## SDK 使用
@@ -166,6 +169,32 @@ func (p *MyProvider) List() ([]*core.Record, error)            { /* ... */ }
 func (p *MyProvider) Delete(name string) error                 { /* ... */ }
 ```
 
+### Noop Provider（内网测试）
+
+Noop Provider 行为与腾讯云完全一致（相同 CNAME 生成、IP 校验），数据存内存，无需联网：
+
+```go
+import "github.com/wangbo2295/gadns/provider/noop"
+
+cp := noop.NewProvider(&noop.Config{Domain: "example.com"})
+
+// 以下调用与 tencent provider 完全相同
+record, _ := cp.Create("app.example.com", []string{"1.1.1.1", "2.2.2.2"})
+cp.Get("app.example.com")
+cp.List()
+cp.Update("app.example.com", []string{"3.3.3.3"})
+cp.Delete("app.example.com")
+```
+
+CLI 中使用 `-p noop`：
+
+```bash
+cat > noop.yaml << EOF
+domain: "example.com"
+EOF
+gadns -p noop -c noop.yaml add -i 1.1.1.1 app
+```
+
 ## IP 格式
 
 每个 IP 必须是合法的 IPv4 地址，多个 IP 用逗号分隔。
@@ -261,12 +290,13 @@ gadns/
 ├── core/                # 核心接口和类型 (package core)
 │   ├── cname.go         # CNAMEProvider 接口、Record 类型
 │   └── cname_test.go
-├── provider/            # Provider 实现 (package provider)
+├── provider/            # Provider 实现
 │   ├── factory.go       # 工厂函数
-│   └── tencent/         # 腾讯云实现
-│       ├── provider.go  # CNAMEProvider 实现
-│       ├── client.go    # DNSPod API 封装
-│       └── config.go    # 配置类型
+│   ├── tencent/         # 腾讯云实现
+│   │   ├── provider.go  # CNAMEProvider 实现
+│   │   ├── client.go    # DNSPod API 封装
+│   │   └── config.go    # 配置类型
+│   └── noop/            # 内网测试实现（内存存储）
 ├── utils/              # 工具函数 (package utils)
 │   ├── validator.go     # IPv4 校验
 │   └── domain.go        # 域名处理、CNAME 生成
