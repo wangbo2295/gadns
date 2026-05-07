@@ -148,10 +148,8 @@ import "github.com/wangbo2295/gadns/utils"
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
-| `ValidateIP(ip string) error` | 校验 IPv4 地址 | `1.1.1.1` |
-| `SubDomain(full, zone string) string` | 提取子域名 | `SubDomain("app.doerhh.cn", "doerhh.cn")` → `"app"` |
-| `FullDomain(sub, zone string) string` | 构造完整域名 | `FullDomain("app", "doerhh.cn")` → `"app.doerhh.cn"` |
-| `GenerateCNAME(full, zone string) string` | 生成 CNAME | `GenerateCNAME("app.doerhh.cn", "doerhh.cn")` → `"app-a1b2c3.doerhh.cn"` |
+| `ValidateIP(ip string) error` | 校验 IPv4 地址 | `"1.1.1.1"` |
+| `GenerateCNAME(full, zone string) string` | 生成 CNAME | `GenerateCNAME("app.doerhh.cn", "doerhh.cn")` → `"app-doerhh-cn-a1b2c3.doerhh.cn"` |
 
 ### 扩展自定义 Provider
 
@@ -243,7 +241,7 @@ graph TB
 
     subgraph Util["工具层"]
         Valid["IP Validator (utils)"]
-        Domain["CNAME/Domain (utils)"]
+        Domain["CNAME Gen (utils)"]
         Conf["Config Loader (config)"]
     end
 
@@ -299,7 +297,7 @@ gadns/
 │   └── noop/            # 内网测试实现（内存存储）
 ├── utils/              # 工具函数 (package utils)
 │   ├── validator.go     # IPv4 校验
-│   └── domain.go        # 域名处理、CNAME 生成
+│   └── domain.go        # CNAME 生成
 ├── config/              # 配置加载 (package config)
 │   └── loader.go        # YAML 配置加载
 ├── examples/            # 使用示例

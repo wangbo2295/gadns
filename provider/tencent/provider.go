@@ -4,6 +4,7 @@ package tencent
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/wangbo2295/gadns/core"
 	"github.com/wangbo2295/gadns/utils"
@@ -44,7 +45,7 @@ func (p *Provider) Create(fullDomain string, ips []string) (*core.Record, error)
 	}
 
 	cname := p.GenerateCNAME(fullDomain)
-	sub := utils.SubDomain(cname, p.config.Domain) // A 记录的子域名与 CNAME 一致
+	sub := strings.TrimSuffix(cname, "."+p.config.Domain) // A 记录的子域名与 CNAME 一致
 
 	if err := p.createRecords(ctx, sub, ips); err != nil {
 		return nil, err
@@ -106,7 +107,7 @@ func (p *Provider) createRecords(ctx context.Context, sub string, ips []string) 
 func (p *Provider) Update(fullDomain string, ips []string) (*core.Record, error) {
 	ctx := context.Background()
 	cname := p.GenerateCNAME(fullDomain)
-	sub := utils.SubDomain(cname, p.config.Domain)
+	sub := strings.TrimSuffix(cname, "."+p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
 		Subdomain: sub,
@@ -132,7 +133,7 @@ func (p *Provider) Update(fullDomain string, ips []string) (*core.Record, error)
 func (p *Provider) Get(fullDomain string) (*core.Record, error) {
 	ctx := context.Background()
 	cname := p.GenerateCNAME(fullDomain)
-	sub := utils.SubDomain(cname, p.config.Domain)
+	sub := strings.TrimSuffix(cname, "."+p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
 		Subdomain: sub,
@@ -182,7 +183,7 @@ func (p *Provider) List() ([]*core.Record, error) {
 			continue
 		}
 
-		fd := utils.FullDomain(r.SubDomain, p.config.Domain)
+		fd := r.SubDomain + "." + p.config.Domain
 		if existing, ok := recordMap[fd]; ok {
 			if !contains(existing.IPs, r.Value) {
 				existing.IPs = append(existing.IPs, r.Value)
@@ -208,7 +209,7 @@ func (p *Provider) List() ([]*core.Record, error) {
 func (p *Provider) Delete(fullDomain string) error {
 	ctx := context.Background()
 	cname := p.GenerateCNAME(fullDomain)
-	sub := utils.SubDomain(cname, p.config.Domain)
+	sub := strings.TrimSuffix(cname, "."+p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
 		Subdomain: sub,

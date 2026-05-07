@@ -6,26 +6,11 @@ import (
 	"strings"
 )
 
-// SubDomain 从完整域名中提取子域名部分
-func SubDomain(fullDomain, zoneDomain string) string {
-	if fullDomain == zoneDomain {
-		return "@"
-	}
-	return strings.TrimSuffix(fullDomain, "."+zoneDomain)
-}
-
-// FullDomain 从子域名构造完整域名
-func FullDomain(sub, zoneDomain string) string {
-	if sub == "@" {
-		return zoneDomain
-	}
-	return sub + "." + zoneDomain
-}
-
-// GenerateCNAME 生成 CNAME，hash 拼接在子域名后
+// GenerateCNAME 生成 CNAME：将域名中的 . 替换为 -，拼接 hash，以 zoneDomain 结尾
+// 例如 app.doerhh.cn → app-doerhh-cn-a1b2c3.doerhh.cn
 func GenerateCNAME(fullDomain, zoneDomain string) string {
-	sub := SubDomain(fullDomain, zoneDomain)
+	safe := strings.ReplaceAll(fullDomain, ".", "-")
 	h := sha256.Sum256([]byte(zoneDomain + ":" + fullDomain))
 	hash := hex.EncodeToString(h[:3])
-	return sub + "-" + hash + "." + zoneDomain
+	return safe + "-" + hash + "." + zoneDomain
 }
