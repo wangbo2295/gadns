@@ -17,13 +17,6 @@ type TencentConfig struct {
 	Domain    string `yaml:"domain"`
 }
 
-// LocalConfig 本地实现配置
-type LocalConfig struct {
-	HostsPath   string `yaml:"hosts_path"`
-	StoragePath string `yaml:"storage_path"`
-	Domain      string `yaml:"domain"`
-}
-
 // Load 从文件加载配置
 func Load[T any](path string) (*T, error) {
 	// 展开波浪线路径

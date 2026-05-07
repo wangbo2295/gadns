@@ -4,26 +4,14 @@ package provider
 import (
 	"fmt"
 
-	"github.com/yourusername/smartdns/core"
-	"github.com/yourusername/smartdns/config"
-	"github.com/yourusername/smartdns/provider/local"
-	"github.com/yourusername/smartdns/provider/tencent"
+	"github.com/wangbo2295/gadns/config"
+	"github.com/wangbo2295/gadns/core"
+	"github.com/wangbo2295/gadns/provider/tencent"
 )
 
-// New 根据配置创建SmartDNS实例
-func New(providerType, configPath string) (core.SmartDNS, error) {
+// New 根据配置创建 CNAMEProvider 实例（目前仅支持腾讯云）
+func New(providerType, configPath string) (core.CNAMEProvider, error) {
 	switch providerType {
-	case "local":
-		cfg, err := config.Load[config.LocalConfig](configPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load local config: %w", err)
-		}
-		return local.NewProvider(&local.Config{
-			HostsPath:   cfg.HostsPath,
-			StoragePath: cfg.StoragePath,
-			Domain:      cfg.Domain,
-		}), nil
-
 	case "tencent":
 		cfg, err := config.Load[config.TencentConfig](configPath)
 		if err != nil {

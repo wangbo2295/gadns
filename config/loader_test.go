@@ -41,35 +41,6 @@ domain: "example.com"
 	}
 }
 
-func TestLoadLocalConfig(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "local.yaml")
-
-	content := `
-hosts_path: "/etc/hosts"
-storage_path: "~/.smartdns/records.json"
-domain: "smartdns.local"
-`
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	cfg, err := Load[LocalConfig](configPath)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	if cfg.HostsPath != "/etc/hosts" {
-		t.Errorf("HostsPath = %v, want /etc/hosts", cfg.HostsPath)
-	}
-	if cfg.StoragePath != "~/.smartdns/records.json" {
-		t.Errorf("StoragePath = %v, want ~/.smartdns/records.json", cfg.StoragePath)
-	}
-	if cfg.Domain != "smartdns.local" {
-		t.Errorf("Domain = %v, want smartdns.local", cfg.Domain)
-	}
-}
-
 func TestLoadInvalidPath(t *testing.T) {
 	_, err := Load[TencentConfig]("/nonexistent/config.yaml")
 	if err == nil {

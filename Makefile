@@ -1,7 +1,7 @@
-# SmartDNS Makefile
+# GADNS Makefile
 
 # 项目信息
-NAME := smartdns
+NAME := gadns
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -17,12 +17,12 @@ GOVET := $(GOCMD) vet
 
 # 构建相关
 LDFLAGS := -ldflags \
-	"-X 'main.Version=$(VERSION)' \
-	-X 'main.BuildTime=$(BUILD_TIME)' \
-	-X 'main.GitCommit=$(GIT_COMMIT)'"
+	"-X 'github.com/wangbo2295/gadns/cmd.Version=$(VERSION)' \
+	-X 'github.com/wangbo2295/gadns/cmd.BuildTime=$(BUILD_TIME)' \
+	-X 'github.com/wangbo2295/gadns/cmd.GitCommit=$(GIT_COMMIT)'"
 
 # 目录
-CONFIG_DIR := ~/.smartdns
+CONFIG_DIR := ~/.gadns
 
 # 颜色输出
 RED := \033[0;31m
@@ -113,13 +113,14 @@ lint:
 init-config:
 	@echo "$(GREEN)Initializing config...$(NC)"
 	@mkdir -p $(CONFIG_DIR)
-	@if [ ! -f $(CONFIG_DIR)/local.yaml ]; then \
-		echo "hosts_path: \"/etc/hosts\"" > $(CONFIG_DIR)/local.yaml; \
-		echo "storage_path: \"$(CONFIG_DIR)/records.json\"" >> $(CONFIG_DIR)/local.yaml; \
-		echo "domain: \"smartdns.local\"" >> $(CONFIG_DIR)/local.yaml; \
-		echo "$(GREEN)Created $(CONFIG_DIR)/local.yaml$(NC)"; \
+	@if [ ! -f $(CONFIG_DIR)/tencent.yaml ]; then \
+		echo "secret_id: \"your_secret_id\"" > $(CONFIG_DIR)/tencent.yaml; \
+		echo "secret_key: \"your_secret_key\"" >> $(CONFIG_DIR)/tencent.yaml; \
+		echo "region: \"ap-guangzhou\"" >> $(CONFIG_DIR)/tencent.yaml; \
+		echo "domain: \"example.com\"" >> $(CONFIG_DIR)/tencent.yaml; \
+		echo "$(GREEN)Created $(CONFIG_DIR)/tencent.yaml$(NC)"; \
 	else \
-		echo "$(YELLOW)$(CONFIG_DIR)/local.yaml already exists$(NC)"; \
+		echo "$(YELLOW)$(CONFIG_DIR)/tencent.yaml already exists$(NC)"; \
 	fi
 
 ## run: 构建并运行 CLI（用于开发）
@@ -129,7 +130,7 @@ run: build
 
 ## help: 显示帮助信息
 help:
-	@echo "$(GREEN)SmartDNS Makefile$(NC)"
+	@echo "$(GREEN)GADNS Makefile$(NC)"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
@@ -156,4 +157,4 @@ help:
 	@echo "  make install             # 安装到系统"
 	@echo "  make run ARGS=\"help\"    # 运行命令"
 	@echo ""
-	@echo "Config: $(CONFIG_DIR)/local.yaml"
+	@echo "Config: $(CONFIG_DIR)/tencent.yaml"

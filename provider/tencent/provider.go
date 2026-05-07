@@ -4,10 +4,9 @@ package tencent
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"github.com/yourusername/smartdns/core"
-	"github.com/yourusername/smartdns/iputil"
+	"github.com/wangbo2295/gadns/core"
+	"github.com/wangbo2295/gadns/utils"
 )
 
 // Provider 腾讯云DNS Provider
@@ -29,223 +28,114 @@ func NewProvider(cfg *Config) (*Provider, error) {
 	}, nil
 }
 
-// GenerateCNAME 生成CNAME
-func (p *Provider) GenerateCNAME(name string) string {
-	return fmt.Sprintf("%s.%s", name, p.config.Domain)
+// GenerateCNAME 生成 CNAME（委托给 utils）
+func (p *Provider) GenerateCNAME(fullDomain string) string {
+	return utils.GenerateCNAME(fullDomain, p.config.Domain)
 }
 
-// SmartRoutingConfig 智能调度配置
-type SmartRoutingConfig struct {
-	Enabled bool     // 是否启用智能调度
-	Regions []string // 地域列表
-	Carriers []string // 运营商列表
-}
-
-// DefaultSmartRoutingConfig 默认智能调度配置
-var DefaultSmartRoutingConfig = SmartRoutingConfig{
-	Enabled: true,
-	Regions: []string{
-		"北京", "上海", "广东", "江苏", "浙江", "四川", "湖北", "福建",
-	},
-	Carriers: []string{
-		RecordLineTelecom, RecordLineUnicom, RecordLineMobile,
-	},
-}
-
-// Create 创建DNS记录（支持智能调度）
-func (p *Provider) Create(name string, ips []string) (*core.Record, error) {
+// Create 创建DNS记录（负载均衡模式：每个IP一条A记录）
+func (p *Provider) Create(fullDomain string, ips []string) (*core.Record, error) {
 	ctx := context.Background()
 
-	// 解析IP列表
-	parsedIPs, err := iputil.ParseIPs(ips)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse IPs: %w", err)
-	}
-
-	cname := p.GenerateCNAME(name)
-
-	// 检查是否启用智能调度
-	config := p.getSmartRoutingConfig()
-
-	if config.Enabled {
-		// 智能调度模式：为每个IP创建多条记录
-		_, err := p.createSmartRoutingRecords(ctx, name, parsedIPs, config)
-		if err != nil {
-			return nil, err
+	for _, ip := range ips {
+		if err := utils.ValidateIP(ip); err != nil {
+			return nil, fmt.Errorf("invalid IP %q: %w", ip, err)
 		}
-
-		return &core.Record{
-			Name:  name,
-			CNAME: cname,
-			IPs:   ips,
-		}, nil
 	}
 
-	// 普通模式：创建单条记录（多个IP用换行分隔）
-	ipList := strings.Join(parsedIPs, "\n")
+	cname := p.GenerateCNAME(fullDomain)
+	sub := utils.SubDomain(cname, p.config.Domain) // A 记录的子域名与 CNAME 一致
 
-	_, err = p.createSingleRecord(ctx, name, ipList, RecordLineDefault, "", "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create record: %w", err)
+	if err := p.createRecords(ctx, sub, ips); err != nil {
+		return nil, err
 	}
 
 	return &core.Record{
-		Name:  name,
+		Name:  fullDomain,
 		CNAME: cname,
 		IPs:   ips,
 	}, nil
 }
 
-// createSmartRoutingRecords 创建智能调度记录
-func (p *Provider) createSmartRoutingRecords(ctx context.Context, name string, ips []string, config SmartRoutingConfig) ([]string, error) {
-	var recordIDs []string
-
-	// 为每个IP创建多条线路记录
-	for ipIndex, ip := range ips {
-		// 创建默认线路记录（第一条IP）
-		if ipIndex == 0 {
-			recordID, err := p.createSingleRecord(ctx, name, ip, RecordLineDefault, "", fmt.Sprintf("primary:%d", ipIndex))
-			if err != nil {
-				return nil, fmt.Errorf("failed to create default record: %w", err)
-			}
-			recordIDs = append(recordIDs, recordID)
-		}
-
-		// 创建地域线路记录
-		for regionIndex, region := range config.Regions {
-			recordID, err := p.createSingleRecord(
-				ctx, name, ip,
-				region, "",
-				fmt.Sprintf(FormatRecordLineRemark(region, "")+",index:%d", ipIndex*len(config.Regions)+regionIndex),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create region record %s: %w", region, err)
-			}
-			recordIDs = append(recordIDs, recordID)
-		}
-
-		// 创建运营商线路记录
-		for _, carrier := range config.Carriers {
-			recordID, err := p.createSingleRecord(
-				ctx, name, ip,
-				carrier, "",
-				fmt.Sprintf(FormatRecordLineRemark("", carrier)+",index:%d", ipIndex),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create carrier record %s: %w", carrier, err)
-			}
-			recordIDs = append(recordIDs, recordID)
-		}
+// createRecords 创建负载均衡记录，失败时回滚已创建的记录
+func (p *Provider) createRecords(ctx context.Context, sub string, ips []string) error {
+	if len(ips) == 1 {
+		_, err := p.client.CreateRecord(ctx, &CreateRecordRequest{
+			Domain:     p.config.Domain,
+			SubDomain:  sub,
+			RecordType: "A",
+			RecordLine: "默认",
+			Value:      ips[0],
+			TTL:        600,
+		})
+		return err
 	}
 
-	return recordIDs, nil
-}
-
-// createSingleRecord 创建单条记录
-func (p *Provider) createSingleRecord(ctx context.Context, subdomain, value, recordLine, recordLineID, remark string) (string, error) {
-	req := &CreateRecordRequest{
-		Domain:       p.config.Domain,
-		SubDomain:    subdomain,
-		RecordType:   "A",
-		RecordLine:   recordLine,
-		RecordLineID: recordLineID,
-		Value:        value,
-		TTL:          600,
-		Weight:       1,
-		Remark:       remark,
+	weight := uint64(100 / len(ips))
+	if weight < 1 {
+		weight = 1
 	}
 
-	resp, err := p.client.CreateRecord(ctx, req)
-	if err != nil {
-		return "", err
+	var created []string
+	for _, ip := range ips {
+		resp, err := p.client.CreateRecord(ctx, &CreateRecordRequest{
+			Domain:     p.config.Domain,
+			SubDomain:  sub,
+			RecordType: "A",
+			RecordLine: "默认",
+			Value:      ip,
+			TTL:        600,
+			Weight:     weight,
+		})
+		if err != nil {
+			for _, id := range created {
+				p.client.DeleteRecord(ctx, &DeleteRecordRequest{
+					Domain:   p.config.Domain,
+					RecordID: id,
+				})
+			}
+			return fmt.Errorf("failed to create record for %s: %w", ip, err)
+		}
+		created = append(created, resp.RecordID)
 	}
 
-	return resp.RecordID, nil
+	return nil
 }
 
 // Update 更新DNS记录
-func (p *Provider) Update(name string, ips []string) (*core.Record, error) {
+func (p *Provider) Update(fullDomain string, ips []string) (*core.Record, error) {
 	ctx := context.Background()
+	cname := p.GenerateCNAME(fullDomain)
+	sub := utils.SubDomain(cname, p.config.Domain)
 
-	// 解析IP列表
-	parsedIPs, err := iputil.ParseIPs(ips)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse IPs: %w", err)
-	}
-
-	cname := p.GenerateCNAME(name)
-
-	// 获取现有记录列表
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
-		Subdomain: name,
-		Limit:     100, // 获取所有相关记录
+		Subdomain: sub,
+		Limit:     100,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe records: %w", err)
 	}
 
-	// 如果没有现有记录，转为创建
-	if len(recordList.Records) == 0 {
-		return p.Create(name, ips)
-	}
-
-	config := p.getSmartRoutingConfig()
-
-	if config.Enabled && len(recordList.Records) > 1 {
-		// 智能调度模式：删除所有旧记录，重新创建
-		for _, record := range recordList.Records {
-			if err := p.client.DeleteRecord(ctx, &DeleteRecordRequest{
-				Domain:   p.config.Domain,
-				RecordID: record.ID,
-			}); err != nil {
-				return nil, fmt.Errorf("failed to delete old record %s: %w", record.ID, err)
-			}
+	for _, record := range recordList.Records {
+		if err := p.client.DeleteRecord(ctx, &DeleteRecordRequest{
+			Domain:   p.config.Domain,
+			RecordID: record.ID,
+		}); err != nil {
+			return nil, fmt.Errorf("failed to delete old record %s: %w", record.ID, err)
 		}
-
-		// 重新创建记录
-		_, err := p.createSmartRoutingRecords(ctx, name, parsedIPs, config)
-		if err != nil {
-			return nil, err
-		}
-
-		return &core.Record{
-			Name:  name,
-			CNAME: cname,
-			IPs:   ips,
-		}, nil
 	}
 
-	// 普通模式：更新单条记录
-	record := recordList.Records[0]
-	ipList := strings.Join(parsedIPs, "\n")
-
-	if err := p.client.ModifyRecord(ctx, &ModifyRecordRequest{
-		Domain:       p.config.Domain,
-		RecordID:     record.ID,
-		SubDomain:    name,
-		RecordType:   "A",
-		RecordLine:   record.RecordLine, // SDK 中使用 Line 字段
-		RecordLineID: record.RecordLineID, // SDK 中使用 LineId 字段
-		Value:        ipList,
-		TTL:          uint64(record.TTL),
-		Weight:       uint64(record.Weight),
-	}); err != nil {
-		return nil, fmt.Errorf("failed to modify record: %w", err)
-	}
-
-	return &core.Record{
-		Name:  name,
-		CNAME: cname,
-		IPs:   ips,
-	}, nil
+	return p.Create(fullDomain, ips)
 }
 
 // Get 获取DNS记录
-func (p *Provider) Get(name string) (*core.Record, error) {
+func (p *Provider) Get(fullDomain string) (*core.Record, error) {
 	ctx := context.Background()
+	cname := p.GenerateCNAME(fullDomain)
+	sub := utils.SubDomain(cname, p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
-		Subdomain: name,
+		Subdomain: sub,
 		Limit:     100,
 	})
 	if err != nil {
@@ -253,21 +143,13 @@ func (p *Provider) Get(name string) (*core.Record, error) {
 	}
 
 	if len(recordList.Records) == 0 {
-		return nil, fmt.Errorf("record not found: %s", name)
+		return nil, fmt.Errorf("record not found: %s", fullDomain)
 	}
 
-	// 收集所有IP值（去重）
 	ipMap := make(map[string]bool)
-	for _, record := range recordList.Records {
-		if record.Type == "A" {
-			// 处理多值记录（换行分隔）
-			values := strings.Split(record.Value, "\n")
-			for _, v := range values {
-				v = strings.TrimSpace(v)
-				if v != "" {
-					ipMap[v] = true
-				}
-			}
+	for _, r := range recordList.Records {
+		if r.Type == "A" {
+			ipMap[r.Value] = true
 		}
 	}
 
@@ -277,8 +159,8 @@ func (p *Provider) Get(name string) (*core.Record, error) {
 	}
 
 	return &core.Record{
-		Name:  name,
-		CNAME: p.GenerateCNAME(name),
+		Name:  fullDomain,
+		CNAME: cname,
 		IPs:   ips,
 	}, nil
 }
@@ -294,56 +176,42 @@ func (p *Provider) List() ([]*core.Record, error) {
 		return nil, fmt.Errorf("failed to list records: %w", err)
 	}
 
-	// 按子域名分组记录
 	recordMap := make(map[string]*core.Record)
-	for _, record := range recordList.Records {
-		if record.Type != "A" {
+	for _, r := range recordList.Records {
+		if r.Type != "A" {
 			continue
 		}
 
-		if existing, ok := recordMap[record.SubDomain]; ok {
-			// 添加新的IP值
-			values := strings.Split(record.Value, "\n")
-			for _, v := range values {
-				v = strings.TrimSpace(v)
-				if v != "" && !contains(existing.IPs, v) {
-					existing.IPs = append(existing.IPs, v)
-				}
+		fd := utils.FullDomain(r.SubDomain, p.config.Domain)
+		if existing, ok := recordMap[fd]; ok {
+			if !contains(existing.IPs, r.Value) {
+				existing.IPs = append(existing.IPs, r.Value)
 			}
 		} else {
-			// 创建新记录
-			values := strings.Split(record.Value, "\n")
-			ips := make([]string, 0, len(values))
-			for _, v := range values {
-				v = strings.TrimSpace(v)
-				if v != "" {
-					ips = append(ips, v)
-				}
-			}
-
-			recordMap[record.SubDomain] = &core.Record{
-				Name:  record.SubDomain,
-				CNAME: p.GenerateCNAME(record.SubDomain),
-				IPs:   ips,
+			recordMap[fd] = &core.Record{
+				Name:  fd,
+				CNAME: fd, // CNAME 即为 A 记录自身的域名
+				IPs:   []string{r.Value},
 			}
 		}
 	}
 
-	// 转换为数组
 	result := make([]*core.Record, 0, len(recordMap))
-	for _, record := range recordMap {
-		result = append(result, record)
+	for _, r := range recordMap {
+		result = append(result, r)
 	}
 
 	return result, nil
 }
 
 // Delete 删除DNS记录
-func (p *Provider) Delete(name string) error {
+func (p *Provider) Delete(fullDomain string) error {
 	ctx := context.Background()
+	cname := p.GenerateCNAME(fullDomain)
+	sub := utils.SubDomain(cname, p.config.Domain)
 
 	recordList, err := p.client.DescribeRecordList(ctx, &DescribeRecordListRequest{
-		Subdomain: name,
+		Subdomain: sub,
 		Limit:     100,
 	})
 	if err != nil {
@@ -351,10 +219,9 @@ func (p *Provider) Delete(name string) error {
 	}
 
 	if len(recordList.Records) == 0 {
-		return fmt.Errorf("record not found: %s", name)
+		return fmt.Errorf("record not found: %s", fullDomain)
 	}
 
-	// 删除所有匹配的记录
 	for _, record := range recordList.Records {
 		if err := p.client.DeleteRecord(ctx, &DeleteRecordRequest{
 			Domain:   p.config.Domain,
@@ -367,14 +234,6 @@ func (p *Provider) Delete(name string) error {
 	return nil
 }
 
-// getSmartRoutingConfig 获取智能调度配置
-func (p *Provider) getSmartRoutingConfig() SmartRoutingConfig {
-	// TODO: 从配置文件或环境变量读取
-	// 目前返回默认配置
-	return DefaultSmartRoutingConfig
-}
-
-// contains 检查字符串切片是否包含某元素
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
