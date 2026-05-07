@@ -60,7 +60,9 @@ gadns delete app
 gadns add -i 1.1.1.1 -c /path/to/config.yaml app
 ```
 
-## 作为库使用
+## SDK 使用
+
+### 方式一：工厂函数 + YAML 配置
 
 ```go
 package main
@@ -76,13 +78,92 @@ func main() {
         panic(err)
     }
 
-    record, err := cp.Create("app.example.com", []string{
-        "1.1.1.1",
-        "2.2.2.2",
-    })
+    record, err := cp.Create("app.example.com", []string{"1.1.1.1", "2.2.2.2"})
+    if err != nil {
+        panic(err)
+    }
 
+    fmt.Printf("Name:  %s\n", record.Name)
+    fmt.Printf("CNAME: %s\n", record.CNAME)
+    fmt.Printf("IPs:   %v\n", record.IPs)
+}
+```
+
+### 方式二：程序化配置（无需 YAML 文件）
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/wangbo2295/gadns/provider/tencent"
+)
+
+func main() {
+    cp, err := tencent.NewProvider(&tencent.Config{
+        SecretID:  "your_secret_id",
+        SecretKey: "your_secret_key",
+        Region:    "ap-guangzhou",
+        Domain:    "example.com",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    record, _ := cp.Create("app.example.com", []string{"1.1.1.1", "2.2.2.2"})
     fmt.Printf("CNAME: %s\n", record.CNAME)
 }
+```
+
+### CNAMEProvider 接口
+
+```go
+type CNAMEProvider interface {
+    Create(fullDomain string, ips []string) (*Record, error)
+    Update(fullDomain string, ips []string) (*Record, error)
+    Get(fullDomain string) (*Record, error)
+    List() ([]*Record, error)
+    Delete(fullDomain string) error
+}
+```
+
+| 方法 | 说明 |
+|------|------|
+| `Create` | 创建域名到 IP 的映射。单 IP 创建一条 A 记录；多 IP 创建多条带权重的 A 记录。失败时自动回滚 |
+| `Update` | 删除旧记录后重新创建，等价于 Delete + Create |
+| `Get` | 查询指定域名的记录，返回聚合后的 IP 列表 |
+| `List` | 列出所有 A 记录，按域名聚合 |
+| `Delete` | 删除指定域名的所有关联记录 |
+
+`fullDomain` 为完整域名（如 `app.example.com`），内部自动提取子域名调用 DNSPod API。
+
+### utils 工具函数
+
+```go
+import "github.com/wangbo2295/gadns/utils"
+```
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `ValidateIP(ip string) error` | 校验 IPv4 地址 | `1.1.1.1` |
+| `SubDomain(full, zone string) string` | 提取子域名 | `SubDomain("app.doerhh.cn", "doerhh.cn")` → `"app"` |
+| `FullDomain(sub, zone string) string` | 构造完整域名 | `FullDomain("app", "doerhh.cn")` → `"app.doerhh.cn"` |
+| `GenerateCNAME(full, zone string) string` | 生成 CNAME | `GenerateCNAME("app.doerhh.cn", "doerhh.cn")` → `"app-a1b2c3.doerhh.cn"` |
+
+### 扩展自定义 Provider
+
+实现 `core.CNAMEProvider` 接口即可接入新的 DNS 服务商：
+
+```go
+import "github.com/wangbo2295/gadns/core"
+
+type MyProvider struct { /* ... */ }
+
+func (p *MyProvider) Create(name string, ips []string) (*core.Record, error) { /* ... */ }
+func (p *MyProvider) Update(name string, ips []string) (*core.Record, error) { /* ... */ }
+func (p *MyProvider) Get(name string) (*core.Record, error)    { /* ... */ }
+func (p *MyProvider) List() ([]*core.Record, error)            { /* ... */ }
+func (p *MyProvider) Delete(name string) error                 { /* ... */ }
 ```
 
 ## IP 格式
